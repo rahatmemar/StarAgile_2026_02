@@ -1,0 +1,132 @@
+Module 6: Jenkins
+=====================
+Any application can be deployed in two ways;
+	1. Manual deployment
+	2. Automated deployment
+
+Manual deployment of Java Application
+-----------------------------------------------------------------------
+Apache Tomcat
+
+Clone the Code into the local ----> Generate the Artifact -----> Deploy the artifact in Tomcat (Manual way)
+
+https://github.com/KastroVKiran/tomcat-app-kastro.git
+
+Edit the context.xml file in manager and host-manager locations
+<?xml version="1.0" encoding="UTF-8"?>
+<Context privileged="true">
+    <Valve className="org.apache.catalina.valves.RemoteAddrValve"
+           allow="^.*$" />
+</Context>
+
+Edit the server.xml file with required port number
+
+Edit the tomcat-users.xml file with admin info
+  <role rolename="manager-gui"/>
+  <role rolename="admin-gui"/>
+  <user username="tomcat" password="tomcat" roles="manager-gui"/>
+  <role rolename="manager-script"/>
+  <user username="admin" password="admin" roles="manager-gui,admin-gui,manager-script"/>
+
+
+Automation of the application deployment
+Automation - Clone the code, Build the code, Store the artifact, Perform code quality analysis, Deploy the artifact
+
+We can do the automation process by using CI & CD Tools
+
+JENKINS -
+What is CI?
+CI - Continuous Integration
+Hotstar ----> Version 1 ----> Test the code ----> Build the code
+Hotstar ----> Version 2 ----> Test the code ----> Build the code
+Hotstar ----> Version 3 ----> Test the code ----> Build the code
+....
+CI = Continuous Test + Continuous Build
+
+CD - Continuous Delivery
+	if you are manually deploying the app into the servers then it is known as Continuous Delivery
+
+CD - Continuous Deployment
+	if you are automating the deployment of the app into the servers then it is known as Continuous Deployment
+
+CI & CD Tools to automate the application deployment;
+Jenkins
+GitHub Actions
+ArgoCD (Kubernetes)
+GitLab CI
+AWS Code Pipeline
+Azure Pipelines
+
+Using Jenkins we can automate the build and deployment of applications
+If you want to work with Jenkins, it is mandatory to install Java (>= java 17)
+Jenkins default port number is 8080
+
+Stages in CI & CD process;
+Pre-requisite: Setup the infrastructure
+
+Stages;
+git checkout
+build the code
+store the artifact
+perform code quality analysis
+perform security scanning
+deployment
+
+Jenkins installation on Amazon Linux 2023;
+https://www.jenkins.io/doc/tutorials/tutorial-for-installing-jenkins-on-AWS/
+
+Jenkins Jobs;
+Job is nothing but a task
+
+Jenkins Jobs are of two types;
+	1. Freestyle project		- every configuration related a job will be done using the Jenkins UI
+	2. Pipeline 				- every configuration related a job will be done using scripts (Pipeline scripts)
+	3. Multi-branch pipeline	- when the code is available in different branches of the same repo then we will use multi-branch pipelines
+
+1. Freestyle project
+In freestyle jobs we will have 6 options to configure;
+	General
+	SCM
+	Triggers
+	Environment
+	Build Steps
+	Post Build Actions
+
+
+=> Jenkins home page
+/var/lib/Jenkins
+
+=> Creation of first job
+
+Note: Dont build a job unnecessarily - underlying storage will be utilized
+
+=> Executing the shell commands using Jenkins
+
+=> Renaming a job, deleting a job, configuring a job, deleting the build
+
+=> Running a file using Jenkins job
+
+=> Task: Create a shell file in VM with commands related to installation of nginx/apache2/httpd
+Access Apache/Nginx on Port 80
+
+=> Configuring a Public GitHub Repo in Jenkins
+
+=> Build the code
+
+=> Parameterized job (Jenkins parameters)
+Parameters are used to pass the variables in the form of key-value pairs during the job build process
+
+Types:
+String Parameter		- group of characters
+Team - kiran, kastro, suresh, mahesh
+
+Choice Parameter		- it is used to select a particular choice from the list of options
+GitHub repo - master, movies, dth, payments
+
+Boolean Parameter
+
+
+
+
+
+
