@@ -1,0 +1,266 @@
+Module 6: Jenkins_Day03
+=====================
+=> Restoring a deleted job
+Plugin: Job Configuration History
+Note: Whatever jobs that were created before installing the plugin, only those jobs cannot be recovered.
+
+=> Email Notifications for a job
+
+=> Changing the Port Number of Jenkins
+cd /usr/lib/systemd/system
+jenkins.service
+
+Restart Jenkins ----> sudo systemctl restart Jenkins
+Open new port number in the SG of VM
+Access the Jenkins using <PublicIP>:<NewPortNumber> -----> Enter credentials and login to Jenkins
+
+=> Build executor status
+It represents how many number of builds we can run parallelly
+
+=> Pipeline
+In Pipelines we will configure the jobs using Pipeline script - Pipeline as a Code
+
+Pipeline?
+	sequential execution of different stages available in a job
+
+Task: Reach office by 10.00 AM
+11.00 PM (Sleep) ----> 7.00 AM (Wakeup) ----> 8.30 AM (Start to office) ----> 9.30 AM (Reach office) ----> 10.00 AM (Be in the cabin)
+
+Stages in the app deployment;
+1. git checkout
+2. build the code
+3. store the artifact
+4. perform code quality analysis
+5. build docker image
+6. push docker image to docker hub
+7. scan the image for vulnerabilities
+8. deploy to Kubernetes cluster
+
+All the configurations related to the above stages will be written in the form of a script.
+This script will be stored inside a file - Jenkinsfile
+Usually, we will store the Jenkinsfile in the root path of the repo
+
+Two ways of writing the Jenkinsfile script;
+Declarative
+Scripted
+
+Declarative;**
+Recent and advanced way of writing the scripts
+Predefined structure
+We will have multiple blocks { }
+Easy to read and manage
+
+Scripted;
+Groovy language 
+Programming 
+Hard to manage and read
+
+
+Declarative;
+P	- pipeline
+A	- agent any
+S	- stages
+S	- steps
+
+Note: Jenkinsfile (script) shouldn't contains multiple stages with same names
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Stage1') {
+            steps {
+                echo 'This is Stage1'
+            }
+        }
+        stage('Stage2') {
+            steps {
+                echo 'This is Stage2'
+            }
+        }
+        stage('Stage3') {
+            steps {
+                echo 'This is Stage3'
+            }
+        }
+        stage('Stage4') {
+            steps {
+                echo 'This is Stage4'
+            }
+        }
+    }
+}
+
+
+=> Project 2: Netflix Pipeline Project
+Stage 1: git checkout
+Stage 2: maven build
+Stage 3: deploy to tomcat
+
+Repo URL: https://github.com/KastroVKiran/Netflix-Pipeline-Project.git
+
+Case 1: Deploy to Tomcat
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven3.9'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/Netflix-Pipeline-Project.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package -T 1C -DskipTests'
+            }
+        }
+        stage('Deploy to Tomcat') {
+            steps {
+                deploy adapters: [tomcat9(alternativeDeploymentContext: '', credentialsId: 'tomcat-creds', path: '', url: 'http://3.111.38.40:9090/')], contextPath: 'Netflix-App', war: '**/*.war'
+            }
+        }
+    }
+}
+
+Case 2: Download the artifact to local (laptop)
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven3.9'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/Netflix-Pipeline-Project.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package -T 1C -DskipTests'
+            }
+        }
+        stage('Download Artifact to Local') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            }
+        }
+        stage('Deploy to Tomcat') {
+            steps {
+                deploy adapters: [tomcat9(alternativeDeploymentContext: '', credentialsId: 'tomcat-creds', path: '', url: 'http://3.111.38.40:9090/')], contextPath: 'Netflix-App', war: '**/*.war'
+            }
+        }
+    }
+}
+
+Case 3: Upload artifact to S3 Bucket
+Plugin: s3 publisher
+
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven3.9'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/Netflix-Pipeline-Project.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package -T 1C -DskipTests'
+            }
+        }
+        stage('Download Artifact to Local') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
+            }
+        }
+        stage('Upload Artifact to S3') {
+            steps {
+                sh 'aws s3 cp target/NETFLIX-1.2.3.war s3://netflix-artifact-s3-bucket/NETFLIX-${BUILD_NUMBER}.war --region ap-south-1'
+            }
+        }
+        stage('Deploy to Tomcat') {
+            steps {
+                deploy adapters: [tomcat9(alternativeDeploymentContext: '', credentialsId: 'tomcat-creds', path: '', url: 'http://3.111.38.40:9090/')], contextPath: 'Netflix-App', war: '**/*.war'
+            }
+        }
+    }
+}
+
+Case 4: Two Pipelines
+Pipeline 1: CI Pipeline		(git checkout, maven build, upload artifact to s3 bucket)
+Pipeline 2: CD Pipeline		(take the artifact from s3 bucket, deploy the selected the artifact)
+
+
+CI Pipeline;
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven3.9'
+    }
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/Netflix-Pipeline-Project.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package -T 1C -DskipTests'
+            }
+        }
+        stage('Upload Artifact to S3') {
+            steps {
+                sh 'aws s3 cp target/NETFLIX-1.2.3.war s3://netflix-artifact-s3-bucket/NETFLIX-${BUILD_NUMBER}.war --region ap-south-1'
+            }
+        }
+    }
+}
+
+
+CD Pipeline;
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'BUILD_TO_DEPLOY', defaultValue: '1', description: 'Build number')
+    }
+
+    stages {
+        stage('Download Artifact from S3') {
+            steps {
+                sh "aws s3 cp s3://netflix-artifact-s3-bucket/NETFLIX-${params.BUILD_TO_DEPLOY}.war Netflix-App.war --region ap-south-1"
+            }
+        }
+
+        stage('Deploy to Tomcat') {
+            steps {
+                deploy adapters: [tomcat9(
+                    credentialsId: 'tomcat-creds',
+                    url: 'http://3.111.38.40:9090/'
+                )],
+                contextPath: 'Netflix-App',
+                war: 'Netflix-App.war'
+            }
+        }
+    }
+}
+
+
+TASK: As soon as CI pipeline is built successfully, i want CD Pipeline to be automatically triggered.
+
+
+
+
