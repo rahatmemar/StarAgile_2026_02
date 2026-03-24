@@ -1,0 +1,312 @@
+Module 6: Jenkins_Day04
+=====================
+=> Jenkins Installation on Ubuntu;
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y openjdk-21-jdk
+java -version
+curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+  /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+  https://pkg.debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt update
+sudo apt install -y jenkins
+sudo systemctl start jenkins
+sudo systemctl enable jenkins
+sudo systemctl status jenkins
+
+=> Email notifications in Pipeline job
+mkxc cxwv frfm tuhf
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk21'
+    }
+
+    stages {
+
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/my-prime-v2.git'
+            }
+        }
+
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+    }
+
+    post {
+        always {
+            script {
+                def buildStatus = currentBuild.currentResult
+                def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'Github User'
+
+                emailext(
+                    subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                    body: """
+                        <p>This is a Jenkins CICD pipeline status.</p>
+                        <p>Project: ${env.JOB_NAME}</p>
+                        <p>Build Number: ${env.BUILD_NUMBER}</p>
+                        <p>Build Status: ${buildStatus}</p>
+                        <p>Started by: ${buildUser}</p>
+                        <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                    """,
+                    to: 'kastrokiran@gmail.com',
+                    from: 'kastrokiran@gmail.com',
+                    replyTo: 'kastrokiran@gmail.com',
+                    mimeType: 'text/html'
+                )
+            }
+        }
+    }
+}
+
+=> Slack notifications in Pipeline job
+
+https://join.slack.com/t/devopsteam-uwi7679/shared_invite/zt-3t726w7p3-LHg5iFgs6XtlwP~LhMJROA
+
+pipeline {
+    agent any
+
+    tools {
+        jdk 'jdk21'
+    }
+
+    environment {
+        // Optional: Define if needed later
+        APP_NAME = "my-prime-v2"
+    }
+
+    stages {
+
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/my-prime-v2.git'
+            }
+        }
+
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+
+    }
+
+    post {
+
+        success {
+            script {
+                sendSlackNotification('SUCCESS')
+            }
+        }
+
+        failure {
+            script {
+                sendSlackNotification('FAILURE')
+            }
+        }
+
+        unstable {
+            script {
+                sendSlackNotification('UNSTABLE')
+            }
+        }
+
+        aborted {
+            script {
+                sendSlackNotification('ABORTED')
+            }
+        }
+    }
+}
+
+
+// 🔧 Reusable Slack Notification Function
+def sendSlackNotification(status) {
+
+    // Get triggering user
+    def user = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'GitHub Trigger'
+
+    // Status colors
+    def colorMap = [
+        'SUCCESS': '#2eb886',   // Green
+        'FAILURE': '#e01e5a',   // Red
+        'UNSTABLE': '#daa038',  // Yellow
+        'ABORTED': '#808080'    // Grey
+    ]
+
+    // Emojis for quick visibility
+    def emojiMap = [
+        'SUCCESS': '🚀',
+        'FAILURE': '🔥',
+        'UNSTABLE': '⚠️',
+        'ABORTED': '⏹️'
+    ]
+
+    // Git details (safe fallback handling)
+    def branch = env.GIT_BRANCH ?: 'N/A'
+    def commit = env.GIT_COMMIT ? env.GIT_COMMIT.take(7) : 'N/A'
+
+    // Build duration
+    def duration = currentBuild.durationString.replace(' and counting', '')
+
+    // Final Slack message
+    def message = """
+${emojiMap[status]} *${status} — Jenkins Pipeline Notification*
+
+*📦 Project:* ${env.JOB_NAME}
+*🔢 Build:* #${env.BUILD_NUMBER}
+*🌿 Branch:* ${branch}
+*🔁 Commit:* ${commit}
+*👤 Triggered By:* ${user}
+*⏱ Duration:* ${duration}
+
+*🔗 View Build Logs:*  
+${env.BUILD_URL}
+"""
+
+    slackSend(
+        channel: 'C0ANGM3CPFG',
+        color: colorMap[status],
+        message: message
+    )
+}
+
+=> Parallel Stages
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Stage 1: Initialization') {
+            steps {
+                echo "🔹 Initializing the pipeline..."
+                echo "🔹 Setting up environment"
+            }
+        }
+
+        stage('Stage 2: Build') {
+            steps {
+                echo "🔨 Building the application..."
+                echo "🔨 Compiling source code"
+            }
+        }
+
+        stage('Stage 3: Test') {
+            steps {
+                echo "🧪 Running test cases..."
+                echo "🧪 Validating application"
+            }
+        }
+
+        stage('Stage 4: Package') {
+            steps {
+                echo "📦 Packaging the application..."
+                echo "📦 Creating artifact (jar/war)"
+            }
+        }
+
+        stage('Stage 5: Deploy') {
+            steps {
+                echo "🚀 Deploying the application..."
+                echo "🚀 Deployment completed successfully"
+            }
+        }
+
+    }
+
+    post {
+        always {
+            echo "📢 Pipeline execution completed!"
+        }
+
+        success {
+            echo "✅ Pipeline executed successfully!"
+        }
+
+        failure {
+            echo "❌ Pipeline failed!"
+        }
+    }
+}
+
+
+Stage 1: 2 minutes - git checkout
+Stage 2: 2 minutes - mvn clean 
+Stage 3: 2 minutes - mvn compile
+Stage 4: 2 minutes - mvn package
+Stage 5: 2 minutes - deploy to tomcat
+================
+Total Pipeline Time: 10 minutes
+
+Stage 1: 2 minutes - git checkout
+Stage 2.1 : mvn clean 
+Stage 2.2 : mvn compile
+Stage 2.3 : mvn package
+Stage 3: 2 minutes - deploy to tomcat
+
+Microservices App;
+5 microservices ----> for each microservice i need to build a docker image
+
+=> Master and Slave(Worker Node/Agent) Architecture
+
+name for worker node 1 - Worker1
+name for worker node 2 - Worker2
+
+label for worker node 1 - node1
+label for worker node 2 - node2
+
+Repo URL:
+https://github.com/KastroVKiran/Hotstar-App.git
+
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git 'https://github.com/KastroVKiran/Hotstar-App.git'
+            }
+        }
+        stage('Maven Build') {
+            steps {
+                sh 'mvn clean'
+            }
+        }
+        stage('Maven Compile') {
+            steps {
+                sh 'mvn compile'
+            }
+        }
+        stage('Maven Package') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+        stage('Deploy to Tomcat') {
+            steps {
+                deploy adapters: [tomcat9(alternativeDeploymentContext: '', credentialsId: 'tomcat-creds', path: '', url: 'http://3.7.70.193:8080')], contextPath: 'Hotstar-App', war: '**/*.war'
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
